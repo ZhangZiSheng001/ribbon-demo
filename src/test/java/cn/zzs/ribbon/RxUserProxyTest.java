@@ -7,7 +7,10 @@ import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.netflix.appinfo.MyDataCenterInstanceConfig;
 import com.netflix.config.ConfigurationManager;
+import com.netflix.discovery.DefaultEurekaClientConfig;
+import com.netflix.discovery.DiscoveryManager;
 import com.netflix.ribbon.Ribbon;
 import com.netflix.ribbon.RibbonRequest;
 import com.netflix.ribbon.proxy.annotation.ClientProperties;
@@ -100,6 +103,26 @@ public class RxUserProxyTest {
         
         UserService userService = Ribbon.from(UserService.class);
         
+        userService.getUserById("1")
+            .toObservable()
+            .subscribe(subscriber);
+        
+        Thread.sleep(10000);
+    }
+    
+    
+    @Test
+    public void testEureka() throws InterruptedException {
+        // 指定实例列表从eureka获取
+        ConfigurationManager.getConfigInstance().setProperty(
+                "UserService.ribbon.NIWSServerListClassName", "com.netflix.niws.loadbalancer.DiscoveryEnabledNIWSServerList");
+        ConfigurationManager.getConfigInstance().setProperty(
+                "UserService.ribbon.DeploymentContextBasedVipAddresses", "UserService");
+        
+        // 初始化EurekaClient
+        DiscoveryManager.getInstance().initComponent(new MyDataCenterInstanceConfig(), new DefaultEurekaClientConfig());
+        
+        UserService userService = Ribbon.from(UserService.class);
         userService.getUserById("1")
             .toObservable()
             .subscribe(subscriber);

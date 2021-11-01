@@ -93,7 +93,7 @@ public class RxUserServer {
 
 
     public static void main(final String[] args) {
-        new RxUserServer(8082).createServer().startAndWait();
+        new RxUserServer(8080).createServer().startAndWait();
     }
 
 }

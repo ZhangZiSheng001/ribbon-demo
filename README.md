@@ -54,7 +54,7 @@ Ribbon：2.7.17
 
 和 Feign 一样，Ribbon 支持使用注解方式定义 HTTP 接口，除此之外，Ribbon 还支持使用`HttpRequestTemplate`、`HttpClientRequest`等方式定义，这部分的例子我也提供了，感兴趣可以移步项目源码。
 
-服务实例的列表通过`ConfigurationManager`设置。当你看到`ConfigurationManager`时，会不会觉得很熟悉呢？我们之前在[Eureka详解系列(三)--探索Eureka强大的配置体系](https://www.cnblogs.com/ZhangZiSheng001/p/14374005.html)中详细介绍过，没错，Ribbon 用的还是这套配置体系。需要强调下，**Netflix 团队开发的这套配置体系提供了动态配置支持（当然，你要会用才行），正是基于这一点，集成了 eureka 的应用才能够实现服务实例的动态调整**。
+服务实例的列表通过`ConfigurationManager`设置。当你看到`ConfigurationManager`时，会不会觉得很熟悉呢？我们之前在[Eureka详解系列(三)--探索Eureka强大的配置体系](https://www.cnblogs.com/ZhangZiSheng001/p/14374005.html)中详细介绍过，没错，Ribbon 用的还是这套配置体系。需要强调下，Netflix 团队开发的这套配置体系提供了动态配置支持（当然，你要会用才行），就拿本项目为例，如果运行过程中你通过`ConfigurationManager`更改了 listOfServers，那么，Ribbon 会感知到这种变化，使用最新的 listOfServers 来负载均衡，只是会有一点点延迟。
 
 ```java
 // 使用注解定义HTTP API
@@ -203,6 +203,36 @@ public class MyLoadBalancerRule extends AbstractLoadBalancerRule {
 运行测试，可以看到，所有请求都被分配到了第一台实例。自定义负载均衡规则生效。
 
 ![zzs_ribbon_006](https://img2020.cnblogs.com/blog/1731892/202110/1731892-20211030104747810-1135715627.png)
+
+## 动态刷新listOfServers
+
+在前面的例子中，我们的服务实例地址 listOfServers 都是写死的，然而，在实际项目中，目标服务的实例数量、地址都是变化的，所以，我们需要动态地更新 listOfServers，而不能写死。
+
+上面说过 Netflix 开发的这套配置体系是支持动态配置的，所以，我能想到的最简方案就是，开一个任务，定时地从注册中心等地方拉取最新的实例列表，再把这个新的列表塞进`ConfigurationManager`就行了。
+
+针对以 eureka server 为注册中心的项目，官方提供了一个实现方案。对比我上面说的方案，这个方案逻辑虽简单，但实现更复杂，源码可读性挺高的，感兴趣的朋友可以看看。
+
+```java
+    @Test
+    public void testEureka() throws InterruptedException {
+        // 指定实例列表从eureka获取
+        ConfigurationManager.getConfigInstance().setProperty(
+                "UserService.ribbon.NIWSServerListClassName", "com.netflix.niws.loadbalancer.DiscoveryEnabledNIWSServerList");
+        ConfigurationManager.getConfigInstance().setProperty(
+                "UserService.ribbon.DeploymentContextBasedVipAddresses", "UserService");
+        
+        // 初始化EurekaClient
+        DiscoveryManager.getInstance().initComponent(new MyDataCenterInstanceConfig(), new DefaultEurekaClientConfig());
+        
+        UserService userService = Ribbon.from(UserService.class);
+        userService.getUserById("1")
+            .toObservable()
+            .subscribe(subscriber);
+        
+        Thread.sleep(10000);
+    }
+}
+```
 
 # 结语
 
