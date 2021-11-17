@@ -19,6 +19,7 @@ package cn.zzs.ribbon;
 import java.nio.charset.Charset;
 import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 import cn.zzs.ribbon.entity.User;
 import io.netty.buffer.ByteBuf;
@@ -83,7 +84,11 @@ public class RxUserServer {
                 break;
             }
         }
-
+        try {
+            TimeUnit.MILLISECONDS.sleep(500);
+        } catch(InterruptedException e) {
+            e.printStackTrace();
+        }
         ByteBuf byteBuf = UnpooledByteBufAllocator.DEFAULT.buffer();
         byteBuf.writeBytes(builder.toString().getBytes(Charset.defaultCharset()));
 

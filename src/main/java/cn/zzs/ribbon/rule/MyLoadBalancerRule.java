@@ -1,4 +1,4 @@
-package cn.zzs.ribbon;
+package cn.zzs.ribbon.rule;
 
 import java.util.List;
 
